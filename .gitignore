@@ -205,3 +205,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# data
+
+speakleash_Data/
+
+# Wyniki i wagi modeli
+results/
+*.pt
+
+# Pliki generowane przez LaTeX
+*.aux
+*.log
+*.out
+*.synctex.gz
+
+# Cache Pythona i Jupyter
+__pycache__/
+.ipynb_checkpoints/
+
+# Ustawienia środowiska i edytora
+.vscode/
+.venv/
+venv/
+env/

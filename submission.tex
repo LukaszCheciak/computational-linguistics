@@ -1,0 +1,123 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{float}
+
+\geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+}
+
+\title{Porównanie Modeli LSTM i Transformer w Zadaniu Modelowania Języka Polskiego}
+\author{Łukasz Chęciak}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Niniejszy raport przedstawia proces implementacji, treningu oraz porównania dwóch architektur sieci neuronowych – LSTM (Long Short-Term Memory) i Transformer – w zadaniu modelowania języka. Celem projektu było zbadanie różnic w jakości generowanego tekstu oraz wydajności obu modeli. (trening na CPU).
+\end{abstract}
+
+\section{Opis Zbioru Danych}
+
+Do treningu modeli wykorzystano zbiór danych \textbf{Speakleash}, a konkretnie jego część \texttt{wolne\_lektury\_corpus}, która zawiera teksty polskich lektur szkolnych. Aby umożliwić realizację projektu na sprzęcie bez dedykowanej karty graficznej, zbiór został ograniczony do pierwszych \textbf{1000 dokumentów}.
+
+\subsection{Proces Przygotowania Danych}
+\begin{enumerate}
+    \item \textbf{Tokenizacja:} Cały korpus został poddany tokenizacji przy użyciu podstawowego tokenizatora (`basic\_english` z biblioteki \texttt{torchtext}), który dzieli tekst na słowa w oparciu o spacje i znaki interpunkcyjne.
+    \item \textbf{Budowa Słownika:} Na podstawie tokenów zbudowano słownik, który zmapował unikalne słowa na indeksy liczbowe. Rozmiar słownika wyniósł \textbf{6255038} tokenów.
+    \item \textbf{Podział na Zbiory:} Dane podzielono w proporcjach: 90\% na zbiór treningowy, 5\% na walidacyjny i 5\% na testowy.
+\end{enumerate}
+
+\section{Architektura Modeli}
+
+Oba modele zostały zaimplementowane w bibliotece PyTorch. Poniżej przedstawiono ich kluczowe parametry.
+
+\subsection{Model LSTM}
+Sieć rekurencyjna o prostej architekturze, przetwarzająca dane sekwencyjnie.
+\begin{itemize}
+    \item \textbf{Warstwa wejściowa:} \texttt{nn.Embedding} o rozmiarze wektora 200.
+    \item \textbf{Warstwy ukryte:} Dwie warstwy \texttt{nn.LSTM} z 200 neuronami w stanie ukrytym.
+    \item \textbf{Warstwa wyjściowa:} \texttt{nn.Linear} mapująca stan ukryty na rozmiar słownika.
+    \item \textbf{Dropout:} 0.2.
+    \item \textbf{Optymalizator:} \texttt{SGD} z krokiem uczenia 5.0 i schedulerem \texttt{StepLR} (gamma=0.95).
+\end{itemize}
+
+\subsection{Model Transformer}
+Architektura oparta na mechanizmie uwagi, zdolna do równoległego przetwarzania sekwencji.
+\begin{itemize}
+    \item \textbf{Warstwa wejściowa:} \texttt{nn.Embedding} (rozmiar 200) oraz kodowanie pozycyjne.
+    \item \textbf{Warstwy enkodera:} Dwie warstwy \texttt{nn.TransformerEncoderLayer} z 2 głowicami uwagi (\texttt{nhead}) i 200 neuronami w warstwie FFN.
+    \item \textbf{Warstwa wyjściowa:} \texttt{nn.Linear} mapująca wyjście enkodera na rozmiar słownika.
+    \item \textbf{Dropout:} 0.2.
+    \item \textbf{Optymalizator:} Identyczny jak w modelu LSTM.
+\end{itemize}
+
+\section{Wyniki Ewaluacji}
+
+Trening obu modeli ograniczono do około \textbf{7 godzin} na CPU. Metrykami oceny były perpleksja (im niższa, tym lepiej) oraz czas treningu.
+
+\subsection{Metryki Wydajności}
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metryka} & \textbf{Model LSTM} & \textbf{Model Transformer} \\
+\hline
+Strata walidacyjna & 8.0 & 7.53 \\
+\hline
+Perpleksja (PPL) & 2789.79 &  1859 \\
+\hline
+Średni czas / paczkę & $\sim$3.3 s &  $\sim$2.8 s \\
+\hline
+\end{tabular}
+\caption{Porównanie metryk końcowych po  $\sim$7 godzinach treningu.}
+\end{table}
+
+\subsection{Porównanie Wygenerowanych Tekstów}
+Po treningu oba modele zostały użyte do wygenerowania kontynuacji dla 10 identycznych promptów. Wyniki zostały zapisane w folderze \texttt{results}. Poniżej przykładowe porównanie dla promptu: \textit{"Dawno, dawno temu za siedmioma górami"}.
+
+\subsubsection{Wynik LSTM}
+"dawno , dawno temu za siedmioma górami , żeby z nim jego w istocie nie zechce . ja jestem tak nie ? gdzie wszakże umarł z dwóch literatury . tak jak mówiłem ? i tak się trzeba pan . kiedy położył się do niej z ludzi i ziemi , żeby jęli się antyli w imieniu co potrzeba"
+
+\subsubsection{Wynik Transformer}
+"dawno , dawno temu za siedmioma górami do nogi ? — powtórzył cofnął się nie chce była świt , który na tę historię colombo przez okienko , który inny , tak że nie było wreszcie okna , ale nie zapomnę się ino do nauki uśmiéchnąć . nikt nie byłoby z góry , nagle szedł przy sobie coś"
+
+\subsection{Interpretacja}
+\textbf{Interpretacja:}
+Model LSTM wykazuje tendencję do generowania tekstu spójnego gramatycznie, ale często wpada w pętle lub traci główny wątek. Z kolei Transformer, dzięki mechanizmowi uwagi, lepiej utrzymuje kontekst, co prowadzi do bardziej zróżnicowanych i logicznych kontynuacji, nawet jeśli lokalnie tekst bywa mniej płynny.
+
+\section{Wyzwania Implementacyjne i Wnioski}
+
+\begin{itemize}
+    \item \textbf{Wydajność CPU:} Największym wyzwaniem był bardzo długi czas treningu. Ograniczenie zasobów obliczeniowych uniemożliwiło pełne wytrenowanie modeli, co wpłynęło na ich ostateczną jakość.
+    \item \textbf{Zarządzanie procesem treningu:} Aby uniknąć utraty postępów, zaimplementowano mechanizm \textbf{checkpointingu}, który cyklicznie zapisywał stan modelu i optymalizatora. Pozwoliło to na bezpieczne przerywanie i wznawianie długotrwałego procesu uczenia.
+\end{itemize}
+
+\subsection{Wnioski Końcowe}
+Projekt z powodzeniem zademonstrował proces budowy i porównania dwóch kluczowych architektur w dziedzinie NLP. Mimo ograniczeń sprzętowych, udało się zaobserwować fundamentalne różnice w ich działaniu. Model Transformer pokazał swój potencjał w generowaniu bardziej kontekstowych i interesujących treści. Model LSTM okazał się prostszy i szybszy w przeliczeniu pojedynczej paczki, ale jego "pamięć" była wyraźnie krótsza. Eksperyment potwierdza, że do zaawansowanych zadań językowych architektury oparte na mechanizmie uwagi są obecnie standardem branżowym.
+
+\end{document}
